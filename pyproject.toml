@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sabnzb-cli"
+version = "0.2.0"
+description = "Lightweight command-line dashboard for monitoring a SABnzbd instance."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Elliott Smith" }]
+dependencies = [
+    "rich>=13.0",
+    "requests>=2.28",
+]
+
+[project.scripts]
+sabnzb-cli = "sabnzb_cli.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
