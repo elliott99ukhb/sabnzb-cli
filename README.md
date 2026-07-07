@@ -97,7 +97,7 @@ Run `sabnzb-cli` with no arguments for the interactive full-screen dashboard
 | `p` | Pause / resume the **selected** item |
 | `d` | Delete the selected item (asks `y`/`n` to confirm) |
 | `P` or `space` | Pause / resume the **whole** queue |
-| `a` | Add a `.nzb` — prompts for a file path or URL |
+| `a` | Add a `.nzb` — **drag a file onto the terminal**, or type a path/URL |
 | `r` | Refresh now |
 | `q` | Quit |
 

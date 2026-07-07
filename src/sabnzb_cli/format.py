@@ -2,10 +2,38 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Optional
+from urllib.parse import unquote, urlparse
 
 _SPARK_CHARS = "▁▂▃▄▅▆▇█"
+
+# Characters that a shell (and a terminal's drag-to-insert) backslash-escapes
+# in a bare path. Notably this excludes letters and digits, so a typed Windows
+# server path like ``C:\dl\file.nzb`` is left intact.
+_ESCAPED_CHAR = re.compile(r"\\([ !\"#$&'()*;<>?\[\]\\^`{|}~])")
+
+
+def clean_input_path(raw: str) -> str:
+    """Normalise a path that may have been dragged into the terminal.
+
+    Dragging a file into macOS Terminal / iTerm2 inserts its path, but with
+    spaces and punctuation backslash-escaped, sometimes wrapped in quotes, and
+    occasionally as a ``file://`` URL. Turn any of those back into a plain path,
+    while leaving http(s) URLs and ordinary typed input untouched.
+    """
+    text = raw.strip()
+    if not text:
+        return ""
+    # Some shells quote a dragged path; drop a matching outer quote pair.
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in ("'", '"'):
+        text = text[1:-1]
+    if text.startswith(("http://", "https://")):
+        return text
+    if text.startswith("file://"):
+        return unquote(urlparse(text).path)
+    return _ESCAPED_CHAR.sub(r"\1", text)
 
 
 def to_float(value: object, default: float = 0.0) -> float:

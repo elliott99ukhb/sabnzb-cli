@@ -18,7 +18,7 @@ from rich.live import Live
 
 from .client import SabClient, SabError
 from .dashboard import SpeedHistory, build_app_layout
-from .format import to_float
+from .format import clean_input_path, to_float
 
 # Escape sequences for the arrow keys (after the leading ESC).
 _ARROWS = {"[A": "up", "[B": "down", "[C": "right", "[D": "left"}
@@ -149,7 +149,9 @@ class InteractiveApp:
         live.stop()
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         try:
-            target = input("Add .nzb (file path or URL, blank to cancel): ").strip()
+            raw = input("Add .nzb — drag a file here, or type a path/URL "
+                        "(blank to cancel): ")
+            target = clean_input_path(raw)
         except (EOFError, KeyboardInterrupt):
             target = ""
         tty.setcbreak(fd)
