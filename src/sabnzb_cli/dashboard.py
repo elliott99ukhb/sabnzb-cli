@@ -15,8 +15,9 @@ from typing import Any, Deque, Dict, List, Optional
 
 from rich import box
 from rich.align import Align
-from rich.console import Group
+from rich.console import Console, ConsoleOptions, Group, RenderResult
 from rich.layout import Layout
+from rich.measure import Measurement
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -31,7 +32,9 @@ from .format import (
     truncate,
 )
 
-SPEED_HISTORY_LEN = 80
+# Keep enough samples to fill a very wide terminal; the graph itself renders
+# only as many columns as the current window provides.
+SPEED_HISTORY_LEN = 400
 
 
 class SpeedHistory:
@@ -50,6 +53,25 @@ class SpeedHistory:
     @property
     def peak(self) -> float:
         return max(self._samples) if self._samples else 0.0
+
+
+class SpeedGraph:
+    """A sparkline that expands to fill whatever width it is rendered into."""
+
+    def __init__(self, samples: List[float], style: str = "green") -> None:
+        self._samples = samples
+        self._style = style
+
+    def __rich_console__(self, console: Console,
+                         options: ConsoleOptions) -> RenderResult:
+        width = options.max_width
+        line = sparkline(self._samples, width=width, pad=True)
+        yield Text(line or "(collecting…)", style=self._style)
+
+    def __rich_measure__(self, console: Console,
+                         options: ConsoleOptions) -> Measurement:
+        # Advertise that we can use the full available width.
+        return Measurement(1, options.max_width)
 
 
 def _status_style(queue: Dict[str, Any]) -> tuple[str, str]:
@@ -89,17 +111,16 @@ def render_app_bar(config: Config, queue: Dict[str, Any]) -> Panel:
     return Panel(grid, box=box.HEAVY, style=style, padding=(0, 0))
 
 
-def render_speed_panel(speed_history: SpeedHistory, queue: Dict[str, Any],
-                       width: Optional[int] = None) -> Panel:
+def render_speed_panel(speed_history: SpeedHistory,
+                       queue: Dict[str, Any]) -> Panel:
     samples = speed_history.samples
-    spark = sparkline(samples, width=width or SPEED_HISTORY_LEN)
     current = samples[-1] if samples else 0.0
 
     disk_free = to_float(queue.get("diskspace1"))
     disk_total = to_float(queue.get("diskspacetotal1"))
     used_pct = (disk_total - disk_free) / disk_total * 100 if disk_total > 0 else 0.0
 
-    line1 = Text(spark or "(collecting…)", style="green")
+    line1 = SpeedGraph(samples, style="green")
 
     line2 = Text()
     line2.append("now ", style="grey62")

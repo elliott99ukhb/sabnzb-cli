@@ -48,18 +48,28 @@ def truncate(text: str, width: int) -> str:
     return text[: width - 1] + "…"
 
 
-def sparkline(samples: list[float], width: Optional[int] = None) -> str:
-    """Render a list of numbers as a Unicode block sparkline."""
-    if not samples:
+def sparkline(samples: list[float], width: Optional[int] = None,
+              pad: bool = False) -> str:
+    """Render a list of numbers as a Unicode block sparkline.
+
+    When ``pad`` is set and there are fewer samples than ``width``, the line is
+    left-padded with the baseline block so it always spans the full ``width``,
+    with the most recent samples kept on the right.
+    """
+    if not samples and not (pad and width):
         return ""
     data = samples[-width:] if width else samples
-    peak = max(data)
+    peak = max(data) if data else 0.0
     if peak <= 0:
-        return _SPARK_CHARS[0] * len(data)
-    scale = len(_SPARK_CHARS) - 1
-    return "".join(
-        _SPARK_CHARS[min(scale, int(round((v / peak) * scale)))] for v in data
-    )
+        line = _SPARK_CHARS[0] * len(data)
+    else:
+        scale = len(_SPARK_CHARS) - 1
+        line = "".join(
+            _SPARK_CHARS[min(scale, int(round((v / peak) * scale)))] for v in data
+        )
+    if pad and width and len(line) < width:
+        line = _SPARK_CHARS[0] * (width - len(line)) + line
+    return line
 
 
 def format_completed(ts: object) -> str:
