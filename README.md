@@ -22,8 +22,21 @@ place.
 
 ## Install
 
-Requires Python 3.9+. Install globally with
-[pipx](https://pipx.pypa.io) so `sabnzb-cli` is on your PATH:
+Requires Python 3.9+ and git. The quickest way is the one-line installer, which
+clones the project into `~/.sabnzb-cli`, sets up a self-contained virtualenv, and
+puts the `sab` command on your PATH:
+
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/elliott99ukhb/sabnzb-cli/master/install.sh)"
+```
+
+Re-run the same command any time to update to the latest version. To uninstall,
+remove `~/.sabnzb-cli` and the `sab` / `sabnzb-cli` symlinks (the installer prints
+the exact paths when it finishes).
+
+### Other options
+
+Install globally with [pipx](https://pipx.pypa.io):
 
 ```sh
 cd sabnzb-cli
