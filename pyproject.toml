@@ -16,6 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
+sab = "sabnzb_cli.cli:main"
 sabnzb-cli = "sabnzb_cli.cli:main"
 
 [tool.setuptools.packages.find]
