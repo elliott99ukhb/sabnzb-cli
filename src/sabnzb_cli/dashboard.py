@@ -140,7 +140,7 @@ def render_speed_panel(speed_history: SpeedHistory,
     else:
         line2.append("unavailable", style="grey62")
 
-    return Panel(Group(line1, line2), title="Download speed",
+    return Panel(Group(line1, Text(), line2), title="Download speed",
                  border_style="green", box=box.ROUNDED)
 
 
@@ -265,7 +265,7 @@ def build_app_layout(
     root = Layout(name="root")
     sections = [
         Layout(render_app_bar(config, queue), name="header", size=3),
-        Layout(render_speed_panel(speed_history, queue), name="speed", size=4),
+        Layout(render_speed_panel(speed_history, queue), name="speed", size=5),
     ]
 
     body = Layout(name="body", ratio=1)
