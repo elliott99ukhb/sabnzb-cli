@@ -75,7 +75,9 @@ pip install -e .
      "host": "192.168.1.10",
      "port": 8080,
      "apikey": "YOUR_API_KEY_HERE",
-     "https": false
+     "https": false,
+     "SABNZBD_ACCESS_CLIENT_ID" : "xxxxx", #optional
+     "SABNZBD_ACCESS_CLIENT_SECRET" : "xxxxx" #optional
    }
    ```
 
