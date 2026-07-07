@@ -56,6 +56,9 @@ class InteractiveApp:
         self.error: Optional[str] = None
         # A pending delete confirmation: (nzo_id, name) or None.
         self.confirm: Optional[tuple[str, str]] = None
+        # While adding a .nzb, the text typed/dragged into the inline field.
+        self.adding = False
+        self.input_buffer = ""
 
     # --- Data ------------------------------------------------------------
     def poll(self) -> None:
@@ -93,6 +96,7 @@ class InteractiveApp:
                 self.client.config, self.queue, self.history, self.speed,
                 selected=self.selected, message=footer, interactive=True,
                 confirm=self.confirm is not None,
+                input_text=self.input_buffer if self.adding else None,
             )
         )
         live.refresh()
@@ -144,18 +148,51 @@ class InteractiveApp:
         self.confirm = None
         self._act(f"Deleted '{name}'", lambda: self.client.delete_item(nzo))
 
-    def _prompt_add(self, live: Live, fd: int, old_settings) -> None:
-        """Drop out of raw mode to read a path/URL, then add it."""
-        live.stop()
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    def _feed_add_key(self, key: str) -> Optional[str]:
+        """Apply a keypress to the inline add field.
+
+        Returns ``"submit"`` on Enter, ``"cancel"`` on Esc, else ``None``.
+        """
+        if key == "esc":
+            return "cancel"
+        if key in ("\r", "\n"):
+            return "submit"
+        if key in ("\x7f", "\x08"):  # Backspace / Delete
+            self.input_buffer = self.input_buffer[:-1]
+        elif key == "\x15":  # Ctrl-U clears the line
+            self.input_buffer = ""
+        elif key in ("up", "down", "left", "right"):
+            pass  # ignore navigation keys while typing
+        elif len(key) == 1 and key.isprintable():
+            self.input_buffer += key
+        return None
+
+    def _prompt_add(self, live: Live) -> None:
+        """Read a path/URL from an inline field without leaving the dashboard."""
+        self.adding = True
+        self.input_buffer = ""
+        result: Optional[str] = None
         try:
-            raw = input("Add .nzb — drag a file here, or type a path/URL "
-                        "(blank to cancel): ")
-            target = clean_input_path(raw)
-        except (EOFError, KeyboardInterrupt):
-            target = ""
-        tty.setcbreak(fd)
-        live.start(refresh=True)
+            while result is None:
+                self._render(live)
+                key = _read_key(0.15)
+                if key is None:
+                    continue
+                result = self._feed_add_key(key)
+                # Drain the rest of a paste/drag burst before re-rendering, so a
+                # long path appears at once instead of a character at a time.
+                while result is None:
+                    nxt = _read_key(0.0)
+                    if nxt is None:
+                        break
+                    result = self._feed_add_key(nxt)
+        except KeyboardInterrupt:
+            result = "cancel"
+        finally:
+            self.adding = False
+
+        target = "" if result == "cancel" else clean_input_path(self.input_buffer)
+        self.input_buffer = ""
         if not target:
             self.message = "Add cancelled."
             return
@@ -174,7 +211,7 @@ class InteractiveApp:
                 while True:
                     self._render(live)
                     key = _read_key(0.15)
-                    if key is not None and self._handle(key, live, fd, old_settings):
+                    if key is not None and self._handle(key, live):
                         break
                     now = time.monotonic()
                     if now - last_poll >= self.interval:
@@ -186,7 +223,7 @@ class InteractiveApp:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return 0
 
-    def _handle(self, key: str, live: Live, fd: int, old_settings) -> bool:
+    def _handle(self, key: str, live: Live) -> bool:
         """Handle a keypress. Returns True to quit."""
         # A pending confirmation swallows the next keypress.
         if self.confirm is not None:
@@ -210,7 +247,7 @@ class InteractiveApp:
         elif key in ("d", "D"):
             self._request_delete()
         elif key in ("a", "A"):
-            self._prompt_add(live, fd, old_settings)
+            self._prompt_add(live)
         elif key in ("r", "R"):
             self.poll()
             self.message = "Refreshed."

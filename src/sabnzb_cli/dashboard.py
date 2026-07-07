@@ -227,10 +227,23 @@ def render_history(history_data: Dict[str, Any], limit: int = 12,
 
 
 def render_footer(message: str = "", interactive: bool = False,
-                  confirm: bool = False) -> Panel:
+                  confirm: bool = False,
+                  input_text: Optional[str] = None) -> Panel:
     grid = Table.grid(expand=True)
     grid.add_column(justify="left", ratio=1)
     grid.add_column(justify="right")
+
+    # Inline add-a-.nzb field: keep the dashboard on screen while typing.
+    if input_text is not None:
+        field = Text(no_wrap=True, overflow="crop")
+        field.append(" Add .nzb ", style="bold black on cyan")
+        field.append("  ")
+        field.append(input_text, style="white")
+        field.append("█", style="cyan")  # block cursor
+        hint = Text(" drag a file in · Enter to add · Esc to cancel ",
+                    style="grey70")
+        grid.add_row(field, hint)
+        return Panel(grid, box=box.HEAVY, border_style="cyan", padding=(0, 0))
 
     if interactive:
         keys = Text()
@@ -261,6 +274,7 @@ def build_app_layout(
     message: str = "",
     interactive: bool = False,
     confirm: bool = False,
+    input_text: Optional[str] = None,
 ) -> Layout:
     root = Layout(name="root")
     sections = [
@@ -279,7 +293,7 @@ def build_app_layout(
     sections.append(body)
 
     sections.append(
-        Layout(render_footer(message, interactive, confirm),
+        Layout(render_footer(message, interactive, confirm, input_text),
                name="footer", size=3)
     )
     root.split_column(*sections)
