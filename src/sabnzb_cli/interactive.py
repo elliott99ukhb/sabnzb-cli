@@ -6,6 +6,8 @@ without blocking the periodic refresh, so it stays dependency-light.
 
 from __future__ import annotations
 
+import codecs
+import os
 import select
 import sys
 import termios
@@ -23,17 +25,45 @@ from .format import clean_input_path, to_float
 # Escape sequences for the arrow keys (after the leading ESC).
 _ARROWS = {"[A": "up", "[B": "down", "[C": "right", "[D": "left"}
 
+# Characters already read from the terminal but not yet consumed. We read the
+# raw file descriptor with os.read (not buffered sys.stdin.read), so a burst of
+# input — e.g. a dragged file path pasted all at once — lands here intact and
+# select() stays in sync with what we have actually consumed.
+_pending: List[str] = []
+_decoder = codecs.getincrementaldecoder("utf-8")("replace")
+
+
+def _reset_input() -> None:
+    """Clear any buffered input (call when entering the interactive loop)."""
+    _pending.clear()
+
+
+def _fill(timeout: float) -> bool:
+    """Wait up to ``timeout`` for input and slurp all of it into ``_pending``."""
+    ready, _, _ = select.select([sys.stdin], [], [], timeout)
+    if not ready:
+        return False
+    try:
+        data = os.read(sys.stdin.fileno(), 4096)
+    except OSError:
+        return False
+    if not data:
+        return False
+    _pending.extend(_decoder.decode(data))
+    return bool(_pending)
+
 
 def _read_key(timeout: float) -> Optional[str]:
     """Return a single logical keypress, or None if nothing arrived in time."""
-    ready, _, _ = select.select([sys.stdin], [], [], timeout)
-    if not ready:
+    if not _pending and not _fill(timeout):
         return None
-    ch = sys.stdin.read(1)
+    ch = _pending.pop(0)
     if ch == "\x1b":  # ESC — maybe the start of an arrow-key sequence
-        ready, _, _ = select.select([sys.stdin], [], [], 0.02)
-        if ready:
-            seq = sys.stdin.read(2)
+        if len(_pending) < 2:
+            _fill(0.02)
+        if len(_pending) >= 2:
+            seq = _pending[0] + _pending[1]
+            del _pending[:2]
             return _ARROWS.get(seq, "esc")
         return "esc"
     return ch
@@ -205,6 +235,7 @@ class InteractiveApp:
         self.poll()
         try:
             tty.setcbreak(fd)
+            _reset_input()
             with Live(console=self.console, screen=True, auto_refresh=False,
                       transient=True) as live:
                 last_poll = time.monotonic()
