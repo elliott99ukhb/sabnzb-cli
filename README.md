@@ -30,9 +30,14 @@ puts the `sab` command on your PATH:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/elliott99ukhb/sabnzb-cli/master/install.sh)"
 ```
 
-Re-run the same command any time to update to the latest version. To uninstall,
-remove `~/.sabnzb-cli` and the `sab` / `sabnzb-cli` symlinks (the installer prints
-the exact paths when it finishes).
+Re-run the same command any time to update to the latest version. To uninstall:
+
+```sh
+bash ~/.sabnzb-cli/install.sh --uninstall
+```
+
+This removes the install and the `sab` / `sabnzb-cli` links but keeps your config.
+Add `--purge` to also delete `~/.config/sabnzb-cli`.
 
 ### Other options
 
